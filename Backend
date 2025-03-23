@@ -1,0 +1,61 @@
+// healthor-backend/server.js
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const authRoutes = require('./routes/auth');
+const symptomRoutes = require('./routes/symptomChecker');
+const doctorRoutes = require('./routes/doctors');
+const reminderRoutes = require('./routes/reminders');
+const healthRoutes = require('./routes/healthMonitoring');
+const bookingRoutes = require('./routes/bookings');
+const paymentRoutes = require('./routes/payments');
+const notificationRoutes = require('./routes/notifications');
+
+dotenv.config();
+
+const app = express();
+app.use(express.json());
+app.use(cors());
+
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => console.log('MongoDB Connected'))
+  .catch(err => console.log(err));
+
+app.use('/api/auth', authRoutes);
+app.use('/api/symptom-checker', symptomRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/reminders', reminderRoutes);
+app.use('/api/health-monitoring', healthRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// Doctor Schema & Search Routes
+const doctorSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    specialty: { type: String, required: true },
+    location: { type: String, required: true },
+    experience: { type: Number, required: true },
+    rating: { type: Number, default: 0 }
+});
+
+const Doctor = mongoose.model('Doctor', doctorSchema);
+
+app.get('/api/doctors', async (req, res) => {
+    try {
+        const { specialty, location } = req.query;
+        let query = {};
+        if (specialty) query.specialty = new RegExp(specialty, 'i');
+        if (location) query.location = new RegExp(location, 'i');
+        const doctors = await Doctor.find(query);
+        res.json(doctors);
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching doctors' });
+    }
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
